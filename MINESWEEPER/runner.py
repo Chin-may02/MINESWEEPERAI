@@ -15,6 +15,19 @@ WHITE = (255, 255, 255)
 PINK = (255, 192, 203)
 RED = (255, 0, 0)
 
+# Number colors
+NUMBER_COLORS = {
+    0: (0 ,0, 0),
+    1: (0, 0, 255),  # Blue
+    2: (0, 255, 0),  # Green
+    3: (255, 0, 0),  # Red
+    4: (0, 0, 128),  # Navy
+    5: (128, 0, 0),  # Maroon
+    6: (0, 128, 128),  # Teal
+    7: (0, 0, 0),  # Black
+    8: (128, 128, 128),  # Gray
+}
+
 # Create game
 pygame.init()
 size = width, height = 600, 400
@@ -52,6 +65,7 @@ ai = MinesweeperAI(height=HEIGHT, width=WIDTH)
 revealed = set()
 flags = set()
 lost = False
+flagged_mines = 0
 
 # Show instructions initially
 instructions = True
@@ -137,13 +151,12 @@ while True:
             elif (i, j) in flags:
                 screen.blit(flag, rect)
             elif (i, j) in revealed:
-                neighbors = smallFont.render(
-                    str(game.nearby_mines((i, j))),
-                    True, BLACK
-                )
-                neighborsTextRect = neighbors.get_rect()
+                neighbors = game.nearby_mines((i, j))
+                neighbors_color = NUMBER_COLORS.get(neighbors, GRAY)
+                neighbors_text = smallFont.render(str(neighbors), True, neighbors_color)
+                neighborsTextRect = neighbors_text.get_rect()
                 neighborsTextRect.center = rect.center
-                screen.blit(neighbors, neighborsTextRect)
+                screen.blit(neighbors_text, neighborsTextRect)
             elif (i, j) in ai.safes and showInference:
                 pygame.draw.rect(screen, PINK, rect)
                 pygame.draw.rect(screen, WHITE, rect, 3)
@@ -153,9 +166,16 @@ while True:
             row.append(rect)
         cells.append(row)
 
+    # Display flags remaining text
+    flags_remaining = MINES - len(flags)
+    flag_count_text = mediumFont.render(f"Flags: {flags_remaining}", True, WHITE)
+    flag_count_rect = flag_count_text.get_rect()
+    flag_count_rect.topright = (width - BOARD_PADDING - 10, BOARD_PADDING)
+    screen.blit(flag_count_text, flag_count_rect)
+
     # Autoplay Button
     autoplayBtn = pygame.Rect(
-        (2 / 3) * width + BOARD_PADDING, BOARD_PADDING,
+        (2 / 3) * width + BOARD_PADDING, BOARD_PADDING + 70,
         (width / 3) - BOARD_PADDING * 2, 50
     )
     bText = "Autoplay" if not autoplay else "Stop"
@@ -167,7 +187,7 @@ while True:
 
     # AI Move button
     aiButton = pygame.Rect(
-        (2 / 3) * width + BOARD_PADDING, BOARD_PADDING + 70,
+        (2 / 3) * width + BOARD_PADDING, BOARD_PADDING + 140,
         (width / 3) - BOARD_PADDING * 2, 50
     )
     buttonText = mediumFont.render("AI Move", True, BLACK)
@@ -179,7 +199,7 @@ while True:
 
     # Reset button
     resetButton = pygame.Rect(
-        (2 / 3) * width + BOARD_PADDING, BOARD_PADDING + 140,
+        (2 / 3) * width + BOARD_PADDING, BOARD_PADDING + 210,
         (width / 3) - BOARD_PADDING * 2, 50
     )
     buttonText = mediumFont.render("Reset", True, BLACK)
@@ -190,10 +210,11 @@ while True:
         screen.blit(buttonText, buttonRect)
 
     # Display text
+    
     text = "Lost" if lost else "Won" if game.mines == flags else ""
     text = mediumFont.render(text, True, WHITE)
     textRect = text.get_rect()
-    textRect.center = ((5 / 6) * width, BOARD_PADDING + 232)
+    textRect.center = ((2 / 3) * width + BOARD_PADDING + 75, BOARD_PADDING + 355),
     screen.blit(text, textRect)
 
     # Show Safes and Mines button
@@ -221,8 +242,10 @@ while True:
                 if cells[i][j].collidepoint(mouse) and (i, j) not in revealed:
                     if (i, j) in flags:
                         flags.remove((i, j))
+                        flagged_mines -= 1
                     else:
                         flags.add((i, j))
+                        flagged_mines += 1
                     time.sleep(0.2)
 
     elif left == 1:
@@ -250,6 +273,7 @@ while True:
             flags = set()
             lost = False
             mine_detonated = None
+            flagged_mines = 0
             continue
 
         # If Inference button clicked, toggle showInference
